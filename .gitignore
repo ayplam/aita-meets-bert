@@ -1,0 +1,6 @@
+reddit.creds
+.vscode
+.reddit
+.metaflow
+*cache*
+*.pyc
