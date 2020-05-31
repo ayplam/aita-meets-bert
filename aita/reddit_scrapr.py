@@ -135,6 +135,7 @@ def parse_submission(data):
 
 
 def is_comment_from_mod(comment_body: str) -> bool:
+    """Identifies whether a comment is made by a moderator"""
     moderator_phrases = ["I am a bot", "AUTOMOD"]
     return (
         True if any([phrase in comment_body for phrase in moderator_phrases]) else False
