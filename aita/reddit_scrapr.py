@@ -4,7 +4,7 @@ import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, NamedTuple
-from urllib import request
+from urllib import parse, request
 
 import pandas as pd
 import praw
@@ -115,7 +115,7 @@ def pushshift_submission_query(query_dict: Dict) -> Dict:
     """
     sample_url = (
         "https://api.pushshift.io/reddit/submission/search/?"
-        + "{parse.urlencode(query_dict)}"
+        + f"{parse.urlencode(query_dict)}"
     )
     response = request.urlopen(sample_url)
     html = response.read()
@@ -141,7 +141,7 @@ def is_comment_from_mod(comment_body: str) -> bool:
         return False
 
 
-def aita_comment_judgement(comment_body: str) -> Judgement:
+def aita_comment_judgement(comment_body: str) -> str:
     """Get the judgement given a comment
 
     If more than one judgement was detected or words indicating the comment
@@ -153,14 +153,15 @@ def aita_comment_judgement(comment_body: str) -> Judgement:
 
     Returns
     -------
-    Judgement
+    str
+        The judgement
     """
     # Ignore comments from bots
     if is_comment_from_mod(comment_body):
         return None
 
     final_judgement = [
-        judgement for judgement in Judgement if judgement.name in comment_body
+        judgement.name for judgement in Judgement if judgement.name in comment_body
     ]
     if len(final_judgement) == 1:
         return final_judgement[0]
@@ -218,27 +219,24 @@ def comment_judgements(
     # Check if the post as been pulled already
     comments_pkl = data_dir / f"{post_id}.pkl"
     if comments_pkl.exists():
-        try:
-            with open(comments_pkl, "rb") as f:
-                return pickle.load(f)
-            print(f"Loaded comment pickle for: {post_id}")
-        except Exception:
-            pass
+        with open(comments_pkl, "rb") as f:
+            comments = pickle.load(f)
+
+        print(f"Loaded comment pickle for: {post_id}")
+        return [Comment(**comment) for comment in comments]
 
     comments: List[Comment] = []
-    try:
-        for top_level_comment in reddit.submission(id=post_id).comments:
-            if isinstance(top_level_comment, MoreComments):
-                continue
 
-            comments.append(parse_comment(top_level_comment))
+    for top_level_comment in reddit.submission(id=post_id).comments:
+        if isinstance(top_level_comment, MoreComments):
+            continue
 
-    except Exception as e:
-        print(f"Unable to pull comments for {post_id}, ignoring: {e}")
+        comments.append(parse_comment(top_level_comment))
 
     # Write to local to not pull the data again next time
     with open(comments_pkl, "wb") as f:
-        pickle.dump(comments, f)
+        # Store as dictionary to remove namedtuple dependency
+        pickle.dump([comment._asdict() for comment in comments], f)
 
     return comments
 
@@ -264,11 +262,8 @@ def aita_score_summary(comments: List[Comment], min_score=25) -> Dict:
         return dict()
     else:
         df = pd.DataFrame([comment._asdict() for comment in comments])
-        df["judgement_name"] = df["judgement"].map(
-            lambda x: x.name if x is not None else None
-        )  # pandas doesn't like grouping enums
         relevant_comments = df[
             df["judgement"].map(lambda x: x is not None) & (df["score"] > min_score)
         ]
 
-        return relevant_comments.groupby("judgement_name").sum()["score"].to_dict()
+        return relevant_comments.groupby("judgement").sum()["score"].to_dict()

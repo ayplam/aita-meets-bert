@@ -4,7 +4,6 @@ from unittest import mock
 import pytest
 
 from aita.reddit_scrapr import (
-    Judgement,
     aita_comment_judgement,
     aita_score_summary,
     comment_judgements,
@@ -29,7 +28,7 @@ def test_date_ranges(start, stop, increment, expected_len):
     [
         ("mod", None, -9999),
         ("multi", None, 237),
-        ("nta", Judgement.NTA, 2282),
+        ("nta", "NTA", 2282),
         ("unk", None, 467),
     ],
 )
@@ -45,9 +44,9 @@ def test_parse_comment(resource_path, comment_type, expected_judgement, expected
 @pytest.mark.parametrize(
     "comment_body,expected_judgement",
     [
-        ("YTA no questions asked", Judgement.YTA),
+        ("YTA no questions asked", "YTA"),
         ("NTA but it seems like YTA", None),
-        ("Clearly a case of ESH", Judgement.ESH),
+        ("Clearly a case of ESH", "ESH"),
     ],
 )
 def test_aita_comment_judgement(comment_body, expected_judgement):
@@ -60,9 +59,14 @@ class MockReddit(object):
     pass
 
 
-@mock.patch("reddit_scrapr.reddit", side_effect=MockReddit())
-def test_comment_judgements(mock_reddit, submission, tmpdir):
-    mock_reddit.submission.return_value = submission
+@mock.patch("aita.reddit_scrapr.reddit", side_effect=MockReddit())
+def test_comment_judgements(mock_reddit, submission_comments, tmpdir):
+    class MockSubmission(object):
+        @property
+        def comments(self):
+            return submission_comments
+
+    mock_reddit.submission.return_value = MockSubmission()
     comments = comment_judgements("fui7gp", data_dir=tmpdir)
 
     # Assert the mock was actually called
