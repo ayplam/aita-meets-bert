@@ -135,10 +135,8 @@ def parse_submission(data):
 
 
 def is_comment_from_mod(comment_body: str) -> bool:
-    if "I am a bot" in comment_body or "AUTOMOD" in comment_body:
-        return True
-    else:
-        return False
+    moderator_phrases = ["I am a bot", "AUTOMOD"]
+    True if any([phrase in comment_body for phrase in moderator_phrases]) else False
 
 
 def aita_comment_judgement(comment_body: str) -> str:
@@ -200,7 +198,7 @@ def comment_judgements(
     Since extracting comments takes a significant amount of time,
     top_level_comments are saved to the local directory by ID. This
     unfortunately does create a TON of little files and could easily
-    be improved with some batching
+    be improved with a DB
 
     Parameters
     ----------
