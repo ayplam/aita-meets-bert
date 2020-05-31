@@ -38,15 +38,18 @@ class AitaScrapeFlow(FlowSpec):
         default="2019-01-01",
     )
 
+    end_date = Parameter(
+        "end_date",
+        help="End date to upll data from, in YYYY-MM-DD",
+        default=pd.Timestamp.today().strftime("%Y-%m-%d"),
+    )
+
     @step
     def start(self):
         """
-        Estb
+        Start of scraping data from AITA subreddit
 
         """
-        # self.end_date = datetime.today().strftime("%Y-%m-%d")
-        self.end_date = "2020-03-31"
-
         print(
             f"{current._flow_name} is starting. Grabbing data "
             f"from {self.start_date} to {self.end_date}"
@@ -56,6 +59,13 @@ class AitaScrapeFlow(FlowSpec):
 
     @step
     def get_submissions(self):
+        """Use pushshift to get all post_ids within a given range.
+
+        The reddit API does not allow querying for historical posts
+        of interest, but pushshift does. Due to limits in the return
+        response, date intervals are queried. Only posts with more
+        than 100 comments are kept.
+        """
         date_ranges = get_date_ranges(self.start_date, self.end_date)
         self.posts: List[Post] = []
 
@@ -82,7 +92,13 @@ class AitaScrapeFlow(FlowSpec):
 
     @step
     def get_comments(self):
-        """Gets the top level comments in a post where users assess asshole-ness"""
+        """Gets the top level comments in a post where users assess asshole-ness
+
+        The pushshift API for some strange reason does not have up-to-date
+        comments, so the reddit API is used here instead. This goes fairly
+        slow as only one post_id can be queried at a time, so this is
+        parallelized as much as possible.
+        """
         self.post_comments = parallel_map(
             lambda post: comment_judgements(post.id, data_dir=self.data_dir),
             self.posts,
