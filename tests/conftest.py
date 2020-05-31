@@ -1,5 +1,6 @@
-from pathlib import Path
 import pickle
+from pathlib import Path
+
 import pytest
 
 from reddit_scrapr import Comment, Judgement
@@ -14,6 +15,7 @@ def resource_path():
 def submission(resource_path):
     with open(resource_path / "submission.pkl", "rb") as f:
         return pickle.load(f)
+
 
 @pytest.fixture
 def parsed_comments():

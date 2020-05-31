@@ -1,6 +1,16 @@
+import pickle
 from unittest import mock
+
 import pytest
-from reddit_scrapr import *
+
+from aita.reddit_scrapr import (
+    Judgement,
+    aita_comment_judgement,
+    aita_score_summary,
+    comment_judgements,
+    get_date_ranges,
+    parse_comment,
+)
 
 
 @pytest.mark.parametrize(
@@ -46,11 +56,13 @@ def test_aita_comment_judgement(comment_body, expected_judgement):
 
 class MockReddit(object):
     """Empty class to mock reddit"""
+
     pass
+
 
 @mock.patch("reddit_scrapr.reddit", side_effect=MockReddit())
 def test_comment_judgements(mock_reddit, submission, tmpdir):
-    mock_reddit.submission.return_value=submission
+    mock_reddit.submission.return_value = submission
     comments = comment_judgements("fui7gp", data_dir=tmpdir)
 
     # Assert the mock was actually called
